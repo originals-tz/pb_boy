@@ -34,7 +34,6 @@ class PBField:
         self.attribute = attribute
         self.set_type(type)
         self.set_name(name)
-        self.name = name
         pass
 
     def set_name(self, name):
@@ -49,17 +48,64 @@ class PBField:
         type = type.split(':')[-1]
         self.type = type
 
+    def set_repeated(self):
+        self.attribute = "repeated"
+
 class PBMessage:
     def __init__(self, cxx_struct : clang.cindex.Cursor) -> None:
         self.name = cxx_struct.spelling
-        field_list = [i for i in cxx_struct.get_children() if i.kind in [CursorKind.FIELD_DECL, CursorKind.STRUCT_DECL]]
-        for field in field_list:
+        self.cxx_struct = cxx_struct
+
+    def parse(self):
+        print("[Struct] : parse ", self.name)
+        self.field_list = []
+        self.sub_msg_list = []
+        for field in [i for i in self.cxx_struct.get_children() if i.kind in [CursorKind.FIELD_DECL, CursorKind.STRUCT_DECL]]:
+            self._parse_field(field)
         pass
 
-    def _parse_field(self, field):
+    def print(self):
+        pb_data = "\nmessage " + self.name + "\n{\n"
+        idx = 1
+        for field in self.field_list:
+            pb_data = pb_data + "    %s %s %s = %d;\n"%(field.attribute, field.type, field.name, idx)
+            idx = idx + 1
+        pb_data = pb_data + "}\n"
+        print(pb_data)
+
+    def _parse_field(self, field : clang.cindex.Cursor):
         pb_field = PBField(field.type.spelling, field.spelling)
         field_type_list = [i.spelling for i in field.get_children() if i.kind in [CursorKind.FIELD_DECL, CursorKind.STRUCT_DECL, CursorKind.TYPE_REF, CursorKind.TEMPLATE_REF]]
-
+        if len(field_type_list) == 0: 
+            self.field_list.append(pb_field)
+            return
+        self._parse_type_list(field_type_list, pb_field)
+    
+    def _parse_type_list(self, typelist, pb_field : PBField):
+        typelist_size = len(typelist)
+        print("[Field] parse {}::{} type {} ".format(self.name, pb_field.name, typelist))
+        first_type = typelist[0]
+        if first_type in ["vector", "list", "set", "queue", "stack", "unordered_set"]:
+            if typelist_size != 2:
+                print('[Field] {}::{} {} type error'.format(self.name, pb_field.name, typelist))
+                return;
+            pb_field.set_repeated()
+            pb_field.set_type(typelist[1])
+        elif first_type in ["map", "unorder_map"]:
+            if typelist_size != 3:
+                print('[Field] {}::{} {} type error'.format(self.name, pb_field.name, typelist))
+                return;
+            pb_field.set_repeated();
+            new_type = "%s_%s"%(self.name, pb_field.name)
+            pb_field.set_type(new_type)
+        else: 
+            pb_field.set_type(first_type)
+        self.field_list.append(pb_field)
+        print("%s %s %s"%(pb_field.attribute, pb_field.type, pb_field.name))
 
 cxx_parser = CXXParser("test.cc")
 struct_dict = cxx_parser.get_struct_from_namespace("pb_data")
+for key in struct_dict:
+    pbmessage = PBMessage(struct_dict[key])
+    pbmessage.parse()
+    pbmessage.print()
