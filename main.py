@@ -1,8 +1,6 @@
 #!/usr/bin/python3
-import sys
 import clang.cindex
-from clang.cindex import Cursor, CursorKind, TypeKind
-from clang.cindex import TranslationUnit
+from clang.cindex import Cursor, CursorKind
 
 class CXXParser:
     def __init__(self, filename) -> None:
@@ -55,6 +53,7 @@ class PBMessage:
     def __init__(self, cxx_struct : clang.cindex.Cursor) -> None:
         self.name = cxx_struct.spelling
         self.cxx_struct = cxx_struct
+        self.sub_msg = {}
 
     def parse(self):
         print("[Struct] : parse ", self.name)
@@ -72,6 +71,9 @@ class PBMessage:
             idx = idx + 1
         pb_data = pb_data + "}\n"
         print(pb_data)
+
+    def get_submsg(self):
+        return self.sub_msg
 
     def _parse_field(self, field : clang.cindex.Cursor):
         pb_field = PBField(field.type.spelling, field.spelling)
@@ -95,9 +97,10 @@ class PBMessage:
             if typelist_size != 3:
                 print('[Field] {}::{} {} type error'.format(self.name, pb_field.name, typelist))
                 return;
-            pb_field.set_repeated();
-            new_type = "%s_%s"%(self.name, pb_field.name)
-            pb_field.set_type(new_type)
+            # pb_field.set_repeated();
+            # pb_field.set_type(typelist[2])
+            self.sub_msg[pb_field.name] = typelist
+            return
         else: 
             pb_field.set_type(first_type)
         self.field_list.append(pb_field)
@@ -109,3 +112,4 @@ for key in struct_dict:
     pbmessage = PBMessage(struct_dict[key])
     pbmessage.parse()
     pbmessage.print()
+    print(pbmessage.get_submsg())
