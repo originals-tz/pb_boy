@@ -13,8 +13,11 @@ struct SubData {
 struct Data {
   int32_t data1;
   std::vector<std::string> data2;
-  std::map<int32_t, std::string> data3;
-  std::map<int32_t, SubData> data4;
   std::map<std::string, SubData> data5;
+};
+
+struct Loader {
+  Data d1;
+  SubData d2;
 };
 } // namespace pb_data

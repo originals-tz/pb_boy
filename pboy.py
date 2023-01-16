@@ -194,6 +194,7 @@ class Pboy:
             pb_field.set_type(field.type.spelling)
             print(field.spelling,":", str(field.kind))
             field_type_list = [i.spelling for i in field.get_children() if i.kind in [CursorKind.FIELD_DECL, CursorKind.STRUCT_DECL, CursorKind.TYPE_REF, CursorKind.TEMPLATE_REF]]
+            print(field_type_list)
             if len(field_type_list) > 0:
                 nodelist = self.parse_field_type(field_type_list)
                 if len(nodelist) == 1 and nodelist[0].mark == 3:
@@ -210,6 +211,7 @@ class Pboy:
         return [msg_dict[key] for key in msg_dict]
 
     def parse_field_type(self, type_list):
+        print("type_list = ", type_list)
         node_list = []
         data_list = []
         print(type_list)

@@ -7,7 +7,7 @@ class CXXParser:
         index = clang.cindex.Index.create()
         self.tu = index.parse(filename, ['c++', '-std=c++11'])
     
-    def get_struct_from_namespace(self, namespace) -> dict[str,clang.cindex.Cursor]:
+    def parse_namespace(self, namespace) -> dict[str,clang.cindex.Cursor]:
         self.root = None
         self.struct_dict = {}
         self.root = self._get_cursor(self.tu, namespace)
@@ -69,8 +69,8 @@ class PBMessage:
         for field in self.field_list:
             pb_data = pb_data + "    %s %s %s = %d;\n"%(field.attribute, field.type, field.name, idx)
             idx = idx + 1
-        pb_data = pb_data + "}\n"
-        print(pb_data)
+        pb_data = pb_data + "}\n\n"
+        return pb_data
 
     def get_submsg(self):
         return self.sub_msg
@@ -97,9 +97,7 @@ class PBMessage:
             if typelist_size != 3:
                 print('[Field] {}::{} {} type error'.format(self.name, pb_field.name, typelist))
                 return;
-            # pb_field.set_repeated();
-            # pb_field.set_type(typelist[2])
-            self.sub_msg[pb_field.name] = typelist
+            self.sub_msg[pb_field.name] = typelist[1:]
             return
         else: 
             pb_field.set_type(first_type)
@@ -107,9 +105,11 @@ class PBMessage:
         print("%s %s %s"%(pb_field.attribute, pb_field.type, pb_field.name))
 
 cxx_parser = CXXParser("test.cc")
-struct_dict = cxx_parser.get_struct_from_namespace("pb_data")
+struct_dict = cxx_parser.parse_namespace("pb_data")
+pbfile = ""
 for key in struct_dict:
     pbmessage = PBMessage(struct_dict[key])
     pbmessage.parse()
-    pbmessage.print()
-    print(pbmessage.get_submsg())
+    pbfile += pbmessage.print()
+print(pbfile)
+    # print(pbmessage.get_submsg())
