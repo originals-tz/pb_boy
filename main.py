@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import re
 import clang.cindex
 from clang.cindex import Cursor, CursorKind
 
@@ -11,7 +12,8 @@ class CXXParser:
         self.root = None
         self.struct_dict = {}
         self.root = self._get_cursor(self.tu, namespace)
-        self._get_struct(self.root)
+        if self.root is not None:
+            self._get_struct(self.root)
         return self.struct_dict
 
     def _get_cursor(self, source, spelling):
@@ -64,7 +66,7 @@ class PBMessage:
         pass
 
     def print(self):
-        pb_data = "\nmessage " + self.name + "\n{\n"
+        pb_data = "\nmessage " + self.snake_case_name() + "\n{\n"
         idx = 1
         for field in self.field_list:
             pb_data = pb_data + "    %s %s %s = %d;\n"%(field.attribute, field.type, field.name, idx)
@@ -74,6 +76,10 @@ class PBMessage:
 
     def get_submsg(self):
         return self.sub_msg
+
+    def snake_case_name(self):
+        snake_case = re.sub(r"(?P<key>[A-Z])", r"_\g<key>", self.name)
+        return snake_case.lower().strip('_')
 
     def _parse_field(self, field : clang.cindex.Cursor):
         pb_field = PBField(field.type.spelling, field.spelling)
@@ -104,12 +110,17 @@ class PBMessage:
         self.field_list.append(pb_field)
         print("%s %s %s"%(pb_field.attribute, pb_field.type, pb_field.name))
 
-cxx_parser = CXXParser("test.cc")
-struct_dict = cxx_parser.parse_namespace("pb_data")
-pbfile = ""
-for key in struct_dict:
-    pbmessage = PBMessage(struct_dict[key])
-    pbmessage.parse()
-    pbfile += pbmessage.print()
-print(pbfile)
-    # print(pbmessage.get_submsg())
+def to_pb(file, namespace):
+    cxx_parser = CXXParser(file)
+    struct_dict = cxx_parser.parse_namespace(namespace)
+    pbfile = ""
+    msg_list = []
+    for key in struct_dict:
+        pbmessage = PBMessage(struct_dict[key])
+        pbmessage.parse()
+        pbfile += pbmessage.print()
+        msg_list.append(pbmessage)
+    print("res=========================================================\n")
+    print(pbfile)
+
+to_pb("test.cc", "pb_data")
